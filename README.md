@@ -1,2 +1,2 @@
-# scala-capstone
-Solution for the Cousera Course Functional Programming in Scala Capstone
+# scala-spark-big-data
+Coursera course ["Functional Programming in Scala Capstone"](https://www.coursera.org/learn/scala-capstone) assignments solutions.

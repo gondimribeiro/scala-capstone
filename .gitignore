@@ -1,2 +1,74 @@
-*.class
-*.log
+# Folder/Mac-related
+# ===
+
+/RUNNING_PID
+/logs/
+*.tgz
+.ensime*
+.DS_Store
+/metastore_db
+
+# Scala-related
+# ===
+*/.bsp
+*/.bsp/*
+*/project/metals.sbt
+*/project/*-shim.sbt
+*/project/project/
+*/project/target/
+*/target/
+*/*/target/*
+*/target/*
+*/subprojects/contrib/*/target/
+*/subprojects/contrib/*/project/
+*/subprojects/platform/*/target/
+*/subprojects/project/*/project/
+*/common-etl/project/project/
+*/common-etl/project/target/
+*/reconciliation/heterogeneous_fixture/target/
+
+# Directories for Integration Testing
+# ===
+
+/metapod-test
+
+# Unit Testing Byproducts
+# ===
+
+derby.log
+*.iml
+__pycache__/
+.bloop
+.metals
+
+# IDE-related files
+# ===
+.attach_pid*
+
+# Vim swap files
+*.swp
+
+# IntelliJ IDEA files
+.idea
+
+# Metals files
+/project/metals.sbt
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Local History for Visual Studio Code
+.history/
+
+#jEnv Files
+.java-version
+.jvmopts
+
+# data
+**/*.dat
+**/*.csv
