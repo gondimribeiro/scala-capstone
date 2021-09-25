@@ -1,6 +1,7 @@
 package observatory
 
 import observatory.Extraction._
+import observatory.Visualization.predictTemperature
 
 import java.time.LocalDate
 import scala.collection.parallel.ParSeq
@@ -12,9 +13,7 @@ object Main extends App {
   val temperaturePath = s"${root}test_temperatures.csv"
 
   val res = locateTemperatures(year, stationsPath, temperaturePath)
+  val temps = locationYearlyAverageRecords(res)
 
-  res.map(println)
-
-  println("------------------")
-  locationYearlyAverageRecords(res).map(println)
+  println(predictTemperature(temps, Location(34, 58)))
 }
