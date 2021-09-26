@@ -21,9 +21,9 @@ object Extraction extends ExtractionInterface {
     * @return A sequence containing triplets (date, location, temperature)
     */
   def locateTemperatures(year: Year, stationsFile: String, temperaturesFile: String): Iterable[(LocalDate, Location, Temperature)] =
-    locateTemperaturesWithSpark(year, stationsFile, temperaturesFile)
+    locateTemperaturesWithSpark(year, stationsFile, temperaturesFile).seq
 
-  def locateTemperaturesWithSpark(year: Year, stationsFile: String, temperaturesFile: String): Iterable[(LocalDate, Location, Temperature)] = {
+  def locateTemperaturesWithSpark(year: Year, stationsFile: String, temperaturesFile: String): ParSeq[(LocalDate, Location, Temperature)] = {
     Logger.getLogger("org.apache.spark").setLevel(Level.ERROR)
 
     // Setup Spark
@@ -84,7 +84,7 @@ object Extraction extends ExtractionInterface {
       )
 
     spark.close()
-    locatedTemperatures
+    locatedTemperatures.par
   }
 
   /**

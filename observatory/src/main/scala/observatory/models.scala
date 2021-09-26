@@ -42,34 +42,6 @@ case class CellPoint(x: Double, y: Double)
 case class Color(red: Int, green: Int, blue: Int)
 
 /**
-  * Parser for stations.csv
-  * @param line
-  */
-case class Station(line: String) {
-  private val data = line.split(",", -1)
-
-  val stn_id: Int = if (data(0) == "") -1 else data(0).toInt
-  val wban_id: Int = if (data(1) == "") -1 else data(1).toInt
-  val lat: Option[Double] = if (data(2) == "") None else Some(data(2).toDouble)
-  val lon: Option[Double] = if (data(3) == "") None else Some(data(3).toDouble)
-}
-
-/**
-  * Parser for temperatures csv
-  * @param line
-  * @param year
-  */
-case class StationTemperature(line: String, year: Int) {
-  private val data = line.split(",", -1)
-
-  val stn_id: Int = if (data(0) == "") -1 else data(0).toInt
-  val wban_id: Int = if (data(1) == "") -1 else data(1).toInt
-  val month: String = data(2)
-  val day: String = data(3)
-  val temperature: Temperature = (data(4).toDouble - 32) / 1.8
-}
-
-/**
   * Parser for temperature_colors.csv
   * @param line
   */

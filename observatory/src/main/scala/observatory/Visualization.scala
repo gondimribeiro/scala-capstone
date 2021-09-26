@@ -17,9 +17,9 @@ object Visualization extends VisualizationInterface {
     * @return The predicted temperature at `location`
     */
   def predictTemperature(temperatures: Iterable[(Location, Temperature)], location: Location): Temperature =
-    parPredictTemperature(temperatures.toArray.par, location: Location)
+    parPredictTemperature(2)(temperatures.toArray.par, location: Location)
 
-  def parPredictTemperature(temperatures: ParSeq[(Location, Temperature)], location: Location): Temperature = {
+  def parPredictTemperature(p: Int)(temperatures: ParSeq[(Location, Temperature)], location: Location): Temperature = {
     val distances = temperatures
       .map(t => (locationsDistance(t._1, location), t._2))
 
@@ -27,7 +27,7 @@ object Visualization extends VisualizationInterface {
     if (minDistance < 1000) tempAtMinDistance
     else {
       def inverseDistance(distance: Double): Double =
-        1.0 / math.pow(distance, 2)
+        1.0 / math.pow(distance, p)
 
       val factors = distances
         .map(t => (inverseDistance(t._1), inverseDistance(t._1) * t._2))
@@ -83,9 +83,9 @@ object Visualization extends VisualizationInterface {
     * @return A 360×180 image where each pixel shows the predicted temperature at its location
     */
   def visualize(temperatures: Iterable[(Location, Temperature)], colors: Iterable[(Temperature, Color)]): Image =
-    parVisualize(temperatures.toArray.par, colors)
+    parVisualize(2)(temperatures.toArray.par, colors)
 
-  def parVisualize(temperatures: ParSeq[(Location, Temperature)], colors: Iterable[(Temperature, Color)]): Image = {
+  def parVisualize(p: Int)(temperatures: ParSeq[(Location, Temperature)], colors: Iterable[(Temperature, Color)]): Image = {
     val lats = (-89 to 90).toArray.par
     val lons = (-180 to 179).toArray.par
 
@@ -95,7 +95,7 @@ object Visualization extends VisualizationInterface {
     } yield Location(lat, lon)
 
     def locationToPixel(location: Location): Pixel = {
-      val color = interpolateColor(colors, parPredictTemperature(temperatures, location))
+      val color = interpolateColor(colors, parPredictTemperature(p)(temperatures, location))
       Pixel(color.red, color.green, color.blue, 255)
     }
 

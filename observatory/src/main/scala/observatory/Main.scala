@@ -14,7 +14,7 @@ object Main extends App {
     println(s"\telapsed time: ${minutes}min ${seconds}sec")
   }
 
-  val year = 1975
+  val year = 2015
   val root = "/"
   val stationsPath = s"${root}stations.csv"
   val temperaturePath = s"${root}${year}.csv"
@@ -22,7 +22,7 @@ object Main extends App {
 
   println("Locating temperatures with spark...")
   var tic = System.nanoTime
-  val locations = locateTemperaturesWithSpark(year, stationsPath, temperaturePath).toSeq.par
+  val locations = locateTemperaturesWithSpark(year, stationsPath, temperaturePath)
   printToc(tic)
 
   println("Computing averages...")
@@ -36,7 +36,7 @@ object Main extends App {
     .map(TemperatureColors)
     .map(c => (c.temperature, Color(c.red, c.green, c.blue)))
 
-  val image = parVisualize(temperatures, colors)
+  val image = parVisualize(6)(temperatures, colors)
   image.output(new java.io.File(s"target/image-$year.png"))
   printToc(tic)
 }
