@@ -1,6 +1,8 @@
 package observatory
 
 
+import observatory.Extraction.parLocationYearlyAverageRecords
+
 import java.time.LocalDate
 import scala.collection.parallel.ParSeq
 import scala.io.Source
@@ -15,15 +17,13 @@ object Extraction extends ExtractionInterface {
     * @param temperaturesFile Path of the temperatures resource file to use (e.g. "/1975.csv")
     * @return A sequence containing triplets (date, location, temperature)
     */
-  def parLocateTemperatures(year: Year, stationsFile: String, temperaturesFile: String): ParSeq[(LocalDate, Location, Temperature)] = {
-    def readResource(resource: String): ParSeq[String] = {
-      val fileStream = Source.getClass.getResourceAsStream(resource)
-      Source.fromInputStream(fileStream).getLines().filter(_ != "").toList.par
-    }
+  def locateTemperatures(year: Year, stationsFile: String, temperaturesFile: String): Iterable[(LocalDate, Location, Temperature)] =
+    parLocateTemperatures(year, stationsFile, temperaturesFile).seq
 
-    val stations = readResource(stationsFile).map(Station)
+  def parLocateTemperatures(year: Year, stationsFile: String, temperaturesFile: String): ParSeq[(LocalDate, Location, Temperature)] = {
+    val stations = parReadResource(stationsFile).map(Station)
       .filter(station => station.lat.isDefined && station.lon.isDefined)
-    val temperatures = readResource(temperaturesFile).map(StationTemperature(_, year))
+    val temperatures = parReadResource(temperaturesFile).map(StationTemperature(_, year))
 
     for {
       station <- stations
@@ -36,13 +36,13 @@ object Extraction extends ExtractionInterface {
     )
   }
 
-  def locateTemperatures(year: Year, stationsFile: String, temperaturesFile: String): Iterable[(LocalDate, Location, Temperature)] =
-    parLocateTemperatures(year, stationsFile, temperaturesFile).seq
-
   /**
     * @param records A sequence containing triplets (date, location, temperature)
     * @return A sequence containing, for each location, the average temperature over the year.
     */
+  def locationYearlyAverageRecords(records: Iterable[(LocalDate, Location, Temperature)]): Iterable[(Location, Temperature)] =
+    parLocationYearlyAverageRecords(records.toSeq.par).seq
+
   def parLocationYearlyAverageRecords(records: ParSeq[(LocalDate, Location, Temperature)]): ParSeq[(Location, Temperature)] = {
     def computeTemperateAverages(temperatures: ParSeq[(LocalDate, Location, Temperature)]): Temperature = {
       val reduced = temperatures
@@ -58,8 +58,11 @@ object Extraction extends ExtractionInterface {
       .toSeq
   }
 
-  def locationYearlyAverageRecords(records: Iterable[(LocalDate, Location, Temperature)]): Iterable[(Location, Temperature)] =
-    parLocationYearlyAverageRecords(records.toSeq.par).seq
-
-
+  def readResource(resource: String): Seq[String] = {
+    val fileStream = Source.getClass.getResourceAsStream(resource)
+    Source.fromInputStream(fileStream).getLines().filter(_ != "").toList
   }
+
+  def parReadResource(resource: String): ParSeq[String] =
+    readResource(resource).par
+}

@@ -40,10 +40,7 @@ object Visualization extends VisualizationInterface {
     * @param value  The value to interpolate
     * @return The color that corresponds to `value`, according to the color scale defined by `points`
     */
-  def interpolateColor(points: Iterable[(Temperature, Color)], value: Temperature): Color =
-    parInterpolateColor(points.toSeq.par, value)
-
-  def parInterpolateColor(points: ParSeq[(Temperature, Color)], value: Temperature): Color = {
+  def interpolateColor(points: Iterable[(Temperature, Color)], value: Temperature): Color = {
     val (maxTemp, maxColor) = points.maxBy(_._1)
 
     if (value >= maxTemp) maxColor
@@ -85,10 +82,13 @@ object Visualization extends VisualizationInterface {
     * @param colors       Color scale
     * @return A 360×180 image where each pixel shows the predicted temperature at its location
     */
-  def visualize(temperatures: Iterable[(Location, Temperature)], colors: Iterable[(Temperature, Color)]): Image =
-    parVisualize(temperatures.toSeq.par, colors.toSeq.par)
+  def visualize(temperatures: Iterable[(Location, Temperature)], colors: Iterable[(Temperature, Color)]): Image = {
+    //  val parBodies = bodies.par
+    //  parBodies.tasksupport = taskSupport
+    parVisualize(temperatures.toSeq.par, colors)
+  }
 
-  def parVisualize(temperatures: ParSeq[(Location, Temperature)], colors: ParSeq[(Temperature, Color)]): Image = {
+  def parVisualize(temperatures: ParSeq[(Location, Temperature)], colors: Iterable[(Temperature, Color)]): Image = {
     val lats = (-89 to 90).toSeq.par
     val lons = (-180 to 179).toSeq.par
 
@@ -98,7 +98,7 @@ object Visualization extends VisualizationInterface {
     } yield (Location(lat, lon))
 
     def locationToPixel(location: Location): Pixel = {
-      val color = parInterpolateColor(colors, parPredictTemperature(temperatures, location))
+      val color = interpolateColor(colors, parPredictTemperature(temperatures, location))
       Pixel(color.red, color.green, color.blue, 255)
     }
 

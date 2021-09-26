@@ -1,31 +1,42 @@
 package observatory
 
-import com.sksamuel.scrimage.{Image, Pixel}
+import com.sksamuel.scrimage.writer
 import observatory.Extraction._
-import observatory.Visualization.{parVisualize, predictTemperature}
+import observatory.Visualization._
 
-import java.time.LocalDate
-import scala.collection.parallel.ParSeq
 
 object Main extends App {
-  val year = 2021
+
+  def printToc(t: Long): Unit = {
+    val duration: Double = (System.nanoTime - t) / 1e9d
+    val minutes: Int = (duration / 60).toInt
+    val seconds: Int = math.round(duration % 60).toInt
+    println(s"\telapsed time: ${minutes}min ${seconds}sec")
+  }
+
+  val year = 1975
   val root = "/"
-  val stationsPath = s"${root}test_stations.csv"
-  val temperaturePath = s"${root}test_temperatures.csv"
+  val stationsPath = s"${root}stations.csv"
+  val temperaturePath = s"${root}${year}.csv"
+  val temperatureColorsPath = s"${root}temperature_colors.csv"
 
-  val res = locateTemperatures(year, stationsPath, temperaturePath)
-  val temps = locationYearlyAverageRecords(res)
-//
-//  println(predictTemperature(temps, Location(34, 58)))
+  println("Locating temperatures...")
+  var tic = System.nanoTime
+  val locations = parLocateTemperatures(year, stationsPath, temperaturePath)
+  printToc(tic)
 
-//  parVisualize(temps.toSeq.par, Seq((0.1, Color(1, 2, 3))).par)
+  println("Computing averages...")
+  tic = System.nanoTime
+  val temperatures = parLocationYearlyAverageRecords(locations)
+  printToc(tic)
 
-  val imageArray = Array.fill(4 * 3)(0)
-  val locs = Seq((0, 0, 1), (1, 0, 2))
+  println("Computing colors...")
+  tic = System.nanoTime
+  val colors = readResource(temperatureColorsPath)
+    .map(TemperatureColors)
+    .map(c => (c.temperature, Color(c.red, c.green, c.blue)))
 
-  locs.foreach(t => imageArray(4 * t._1 + t._2) = t._3)
-
-  imageArray.map(print)
-//  val image = Image(w=360,h=180,pixels=imageArray)
-//  image.output(new java.io.File("target/some-image.png")).
+  val image = parVisualize(temperatures, colors)
+  image.output(new java.io.File(s"target/image-$year.png"))
+  printToc(tic)
 }
