@@ -9,17 +9,19 @@ import scala.collection.parallel.ParSeq
   */
 object Visualization extends VisualizationInterface {
 
+  val doublePrecision = 1e-5
+
   /**
     * @param temperatures Known temperatures: pairs containing a location and the temperature at this location
     * @param location     Location where to predict the temperature
     * @return The predicted temperature at `location`
     */
   def predictTemperature(temperatures: Iterable[(Location, Temperature)], location: Location): Temperature =
-    parPredictTemperature(temperatures.toSeq.par, location: Location)
+    parPredictTemperature(temperatures.toArray.par, location: Location)
 
   def parPredictTemperature(temperatures: ParSeq[(Location, Temperature)], location: Location): Temperature = {
     val distances = temperatures
-      .map(t => (locationsDistance(1e-5)(t._1, location), t._2))
+      .map(t => (locationsDistance(t._1, location), t._2))
 
     val (minDistance, tempAtMinDistance) = distances.minBy(_._1)
     if (minDistance < 1000) tempAtMinDistance
@@ -49,19 +51,17 @@ object Visualization extends VisualizationInterface {
 
       if (value <= minTemp) minColor
       else {
-        val precision = 1e-5
-
         val (x0, y0) = points
           .filter(_._1 <= value)
           .maxBy(_._1)
 
-        if (math.abs(value - x0) < precision) y0
+        if (math.abs(value - x0) < doublePrecision) y0
         else {
           val (x1, y1) = points
             .filter(_._1 >= value)
             .minBy(_._1)
 
-          if (math.abs(value - x1) < precision) y1
+          if (math.abs(value - x1) < doublePrecision) y1
           else {
             def interpolate(y0: Int, y1: Int): Int =
               math.round(y0 + ((value - x0) * (y1 - y0)) / (x1 - x0)).toInt
@@ -82,20 +82,17 @@ object Visualization extends VisualizationInterface {
     * @param colors       Color scale
     * @return A 360×180 image where each pixel shows the predicted temperature at its location
     */
-  def visualize(temperatures: Iterable[(Location, Temperature)], colors: Iterable[(Temperature, Color)]): Image = {
-    //  val parBodies = bodies.par
-    //  parBodies.tasksupport = taskSupport
-    parVisualize(temperatures.toSeq.par, colors)
-  }
+  def visualize(temperatures: Iterable[(Location, Temperature)], colors: Iterable[(Temperature, Color)]): Image =
+    parVisualize(temperatures.toArray.par, colors)
 
   def parVisualize(temperatures: ParSeq[(Location, Temperature)], colors: Iterable[(Temperature, Color)]): Image = {
-    val lats = (-89 to 90).toSeq.par
-    val lons = (-180 to 179).toSeq.par
+    val lats = (-89 to 90).toArray.par
+    val lons = (-180 to 179).toArray.par
 
     val pixels = for {
       lat <- lats
       lon <- lons
-    } yield (Location(lat, lon))
+    } yield Location(lat, lon)
 
     def locationToPixel(location: Location): Pixel = {
       val color = interpolateColor(colors, parPredictTemperature(temperatures, location))
@@ -111,17 +108,16 @@ object Visualization extends VisualizationInterface {
   }
 
   /**
-    * @param precision Double precision to comparisons
     * @param loc1      Location 1
     * @param loc2      Location 2
     * @return Distance between locations
     */
-  def locationsDistance(precision: Double)(loc1: Location, loc2: Location): Double = {
-    val areEqual = math.abs(loc1.lat - loc2.lat) < precision &&
-      math.abs(loc1.lon - loc2.lon) < precision
+  def locationsDistance(loc1: Location, loc2: Location): Double = {
+    val areEqual = math.abs(loc1.lat - loc2.lat) < doublePrecision &&
+      math.abs(loc1.lon - loc2.lon) < doublePrecision
 
-    val areAntipodes = math.abs(loc1.lat + loc2.lat) < precision &&
-      math.abs(loc1.lon - loc2.lon) < 180 + precision
+    val areAntipodes = math.abs(loc1.lat + loc2.lat) < doublePrecision &&
+      math.abs(loc1.lon - loc2.lon) < 180 + doublePrecision
 
     val deltaSigma = {
       if (areEqual) 0

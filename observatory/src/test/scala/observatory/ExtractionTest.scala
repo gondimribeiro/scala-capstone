@@ -1,7 +1,6 @@
 package observatory
 
 import observatory.Extraction.{locateTemperatures, locationYearlyAverageRecords}
-import org.apache.log4j.{Level, Logger}
 import org.junit.Assert._
 import org.junit.Test
 
@@ -29,9 +28,13 @@ trait ExtractionTest extends MilestoneSuite {
       (LocalDate.of(year, 12, 6), Location(37.358, -78.438), 0.0),
       (LocalDate.of(year, 1, 29), Location(37.358, -78.438), 2.0)
     )
+    implicit val locationOrdering: Ordering[Location] = Ordering.by(t => (t.lat, t.lon))
 
-    val resultTemperature = locateTemperatures(year, stationsPath, temperaturePath)
-    correctTemperature.zip(resultTemperature).foreach(t => assertTemperatures(t._1, t._2))
+    val resultTemperature = locateTemperatures(year, stationsPath, temperaturePath).toSeq
+    correctTemperature
+        .sortBy(_._2)
+        .zip(resultTemperature.sortBy(_._2))
+        .foreach(t => assertTemperatures(t._1, t._2))
 
     // test averages
     def assertAverages(t1: (Location, Temperature), t2: (Location, Temperature)): Unit = {
@@ -44,8 +47,10 @@ trait ExtractionTest extends MilestoneSuite {
       (Location(37.358, -78.438), 1.0)
     )
 
-    val resultAverages = locationYearlyAverageRecords(resultTemperature)
-    correctAverages.zip(resultAverages).foreach(t => assertAverages(t._1, t._2))
+    val resultAverages = locationYearlyAverageRecords(resultTemperature).toSeq
+    correctAverages
+        .sortBy(_._2)
+        .zip(resultAverages.sortBy(_._2))
+        .foreach(t => assertAverages(t._1, t._2))
   }
-
 }

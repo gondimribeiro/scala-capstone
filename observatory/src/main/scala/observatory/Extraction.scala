@@ -1,11 +1,14 @@
 package observatory
 
-
-import observatory.Extraction.parLocationYearlyAverageRecords
-
 import java.time.LocalDate
-import scala.collection.parallel.ParSeq
 import scala.io.Source
+import org.apache.log4j.{Level, Logger}
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types.{DoubleType, LongType, StringType, StructType}
+
+import scala.collection.parallel.ParSeq
+
 
 /**
   * 1st milestone: data extraction
@@ -18,22 +21,70 @@ object Extraction extends ExtractionInterface {
     * @return A sequence containing triplets (date, location, temperature)
     */
   def locateTemperatures(year: Year, stationsFile: String, temperaturesFile: String): Iterable[(LocalDate, Location, Temperature)] =
-    parLocateTemperatures(year, stationsFile, temperaturesFile).seq
+    locateTemperaturesWithSpark(year, stationsFile, temperaturesFile)
 
-  def parLocateTemperatures(year: Year, stationsFile: String, temperaturesFile: String): ParSeq[(LocalDate, Location, Temperature)] = {
-    val stations = parReadResource(stationsFile).map(Station)
-      .filter(station => station.lat.isDefined && station.lon.isDefined)
-    val temperatures = parReadResource(temperaturesFile).map(StationTemperature(_, year))
+  def locateTemperaturesWithSpark(year: Year, stationsFile: String, temperaturesFile: String): Iterable[(LocalDate, Location, Temperature)] = {
+    Logger.getLogger("org.apache.spark").setLevel(Level.ERROR)
 
-    for {
-      station <- stations
-      temperature <- temperatures
-      if station.stn_id == temperature.stn_id && station.wban_id == temperature.wban_id
-    } yield (
-      LocalDate.parse(s"${temperature.year}-${temperature.month}-${temperature.day}"),
-      Location(station.lat.get, station.lon.get),
-      temperature.temperature
-    )
+    // Setup Spark
+    val spark: SparkSession =
+      SparkSession
+        .builder()
+        .appName("Observatory")
+        .master("local")
+        .getOrCreate()
+    import spark.implicits._
+
+    spark.conf.set("spark.executor.instances", 8)
+    spark.conf.set("spark.executor.cores", 8)
+
+    // Read stations file
+    val stationsSchema = new StructType()
+      .add("stn_id", LongType, nullable = true)
+      .add("wban_id", LongType, nullable = true)
+      .add("lat", DoubleType, nullable = true)
+      .add("lon", DoubleType, nullable = true)
+
+    val stationsDF = spark
+      .read
+      .schema(stationsSchema)
+      .csv(readResource(stationsFile).toDS)
+      .filter(col("lat").isNotNull || col("lon").isNotNull)
+
+    // Read temperatures file
+    val temperatureSchema = new StructType()
+      .add("stn_id", LongType, nullable = true)
+      .add("wban_id", LongType, nullable = true)
+      .add("month", StringType, nullable = true)
+      .add("day", StringType, nullable = true)
+      .add("temperature", DoubleType, nullable = true)
+
+    val temperatureDF = spark
+      .read
+      .schema(temperatureSchema)
+      .csv(readResource(temperaturesFile).toDS)
+
+    // Join dataframes and collect output
+    val locatedTemperatures = temperatureDF
+      .join(
+        stationsDF,
+        temperatureDF("stn_id") <=> stationsDF("stn_id") && temperatureDF("wban_id") <=> stationsDF("wban_id"),
+        "inner"
+      )
+      .withColumn("date", to_date(concat_ws("-", lit(year), col("month"), col("day"))))
+      .select("date", "lat", "lon", "temperature")
+      .withColumn("temperature", (col("temperature") - 32) / 1.80)
+      .collect()
+      .map(
+        row => (
+          row.getDate(0).toLocalDate,
+          Location(lat = row.getDouble(1), lon = row.getDouble(2)),
+          row.getDouble(3)
+        )
+      )
+
+    spark.close()
+    locatedTemperatures
   }
 
   /**
@@ -41,7 +92,7 @@ object Extraction extends ExtractionInterface {
     * @return A sequence containing, for each location, the average temperature over the year.
     */
   def locationYearlyAverageRecords(records: Iterable[(LocalDate, Location, Temperature)]): Iterable[(Location, Temperature)] =
-    parLocationYearlyAverageRecords(records.toSeq.par).seq
+    parLocationYearlyAverageRecords(records.toArray.par).seq
 
   def parLocationYearlyAverageRecords(records: ParSeq[(LocalDate, Location, Temperature)]): ParSeq[(Location, Temperature)] = {
     def computeTemperateAverages(temperatures: ParSeq[(LocalDate, Location, Temperature)]): Temperature = {
@@ -58,11 +109,12 @@ object Extraction extends ExtractionInterface {
       .toSeq
   }
 
+  /**
+    * @param resource Resource to read
+    * @return A sequence containing, for each location, the average temperature over the year.
+    */
   def readResource(resource: String): Seq[String] = {
     val fileStream = Source.getClass.getResourceAsStream(resource)
     Source.fromInputStream(fileStream).getLines().filter(_ != "").toList
   }
-
-  def parReadResource(resource: String): ParSeq[String] =
-    readResource(resource).par
 }

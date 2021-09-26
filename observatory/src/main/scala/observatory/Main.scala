@@ -20,9 +20,9 @@ object Main extends App {
   val temperaturePath = s"${root}${year}.csv"
   val temperatureColorsPath = s"${root}temperature_colors.csv"
 
-  println("Locating temperatures...")
+  println("Locating temperatures with spark...")
   var tic = System.nanoTime
-  val locations = parLocateTemperatures(year, stationsPath, temperaturePath)
+  val locations = locateTemperaturesWithSpark(year, stationsPath, temperaturePath).toSeq.par
   printToc(tic)
 
   println("Computing averages...")
