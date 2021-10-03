@@ -1,5 +1,7 @@
 package observatory
 
+import java.time.LocalDate
+
 /**
   * Introduced in Week 1. Represents a location on the globe.
   *
@@ -52,4 +54,31 @@ case class TemperatureColors(line: String) {
   val red: Int = data(1).toInt
   val green: Int = data(2).toInt
   val blue: Int = data(3).toInt
+}
+
+/**
+  * Parser for stations.csv
+  * @param line
+  */
+case class Station(line: String) {
+  private val data = line.split(",", -1)
+
+  val stn_id: Int = if (data(0) == "") -1 else data(0).toInt
+  val wban_id: Int = if (data(1) == "") -1 else data(1).toInt
+  val lat: Option[Double] = if (data(2) == "") None else Some(data(2).toDouble)
+  val lon: Option[Double] = if (data(3) == "") None else Some(data(3).toDouble)
+}
+
+/**
+  * Parser for temperatures csv
+  * @param line
+  * @param year
+  */
+case class StationTemperature(line: String, year: Int) {
+  private val data = line.split(",", -1)
+
+  val stn_id: Int = if (data(0) == "") -1 else data(0).toInt
+  val wban_id: Int = if (data(1) == "") -1 else data(1).toInt
+  val date: LocalDate = LocalDate.parse(s"${year}-${data(2)}-${data(3)}")
+  val temperature: Temperature = (data(4).toDouble - 32) / 1.8
 }

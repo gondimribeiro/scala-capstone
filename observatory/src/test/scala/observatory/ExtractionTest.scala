@@ -1,6 +1,6 @@
 package observatory
 
-import observatory.Extraction.{locateTemperatures, locationYearlyAverageRecords}
+import observatory.Extraction.{locateTemperatures, parLocateTemperatures, locationYearlyAverageRecords}
 import org.junit.Assert._
 import org.junit.Test
 
@@ -30,7 +30,7 @@ trait ExtractionTest extends MilestoneSuite {
     )
     implicit val locationOrdering: Ordering[Location] = Ordering.by(t => (t.lat, t.lon))
 
-    val resultTemperature = locateTemperatures(year, stationsPath, temperaturePath).toSeq
+    val resultTemperature = parLocateTemperatures(year, stationsPath, temperaturePath).seq
     correctTemperature
         .sortBy(_._2)
         .zip(resultTemperature.sortBy(_._2))
