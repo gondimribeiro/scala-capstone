@@ -1,10 +1,9 @@
 package observatory
 
 import com.sksamuel.scrimage.{Image, Pixel}
-import observatory.Visualization.{interpolateColor, parPredictTemperature}
+import observatory.Visualization.{interpolateColor, predictTemperature}
 
 import math._
-import scala.collection.parallel.ParIterable
 
 /**
   * 3rd milestone: interactive visualization
@@ -13,6 +12,7 @@ object Interaction extends InteractionInterface {
   val zoomLevel: Int = 8
   val tileSide: Int = 1 << zoomLevel
   val alpha: Int = 100
+  val globalP: Int = 6
 
   /**
     * @param tile Tile coordinates
@@ -32,18 +32,21 @@ object Interaction extends InteractionInterface {
     * @param tile         Tile coordinates
     * @return A 256×256 image showing the contents of the given tile
     */
-  def tile(temperatures: Iterable[(Location, Temperature)], colors: Iterable[(Temperature, Color)], tile: Tile): Image =
-    parTile(2)(temperatures.par, colors, tile)
+  def tile(temperatures: Iterable[(Location, Temperature)], colors: Iterable[(Temperature, Color)], tile: Tile): Image = {
+    System.gc()
+    val result = parTile(temperatures, colors, tile)
+    System.gc()
+    result
+  }
 
-
-  def parTile(p: Int)(temperatures: ParIterable[(Location, Temperature)], colors: Iterable[(Temperature, Color)], tile: Tile): Image = {
+  def parTile(temperatures: Iterable[(Location, Temperature)], colors: Iterable[(Temperature, Color)], tile: Tile): Image = {
     val zoomedX = tileSide * tile.x
     val zoomedY = tileSide * tile.y
     val zoom = tile.zoom + zoomLevel
 
     def tileLocationToPixel(x: Int, y: Int): Pixel = {
       val location = tileLocation(Tile(x = zoomedX + x, y = zoomedY + y, zoom = zoom))
-      val color = interpolateColor(colors, parPredictTemperature(p)(temperatures, location))
+      val color = interpolateColor(colors, predictTemperature(temperatures, location))
       Pixel(color.red, color.green, color.blue, alpha)
     }
 
@@ -70,8 +73,11 @@ object Interaction extends InteractionInterface {
   def generateTiles[Data](
                            yearlyData: Iterable[(Year, Data)],
                            generateImage: (Year, Tile, Data) => Unit
-                         ): Unit =
+                         ): Unit = {
+    System.gc()
     generateTiles(0 to 3)(yearlyData, generateImage)
+    System.gc()
+  }
 
   def generateTiles[Data](zoomLevels: Iterable[Int])(
     yearlyData: Iterable[(Year, Data)],

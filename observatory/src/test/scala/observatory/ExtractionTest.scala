@@ -30,7 +30,7 @@ trait ExtractionTest extends MilestoneSuite {
     )
     implicit val locationOrdering: Ordering[Location] = Ordering.by(t => (t.lat, t.lon))
 
-    val resultTemperature = parLocateTemperatures(year, stationsPath, temperaturePath).seq
+    val resultTemperature = parLocateTemperatures(year, stationsPath, temperaturePath).seq.toSeq
     correctTemperature
         .sortBy(_._2)
         .zip(resultTemperature.sortBy(_._2))

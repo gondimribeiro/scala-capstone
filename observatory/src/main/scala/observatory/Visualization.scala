@@ -2,16 +2,17 @@ package observatory
 
 import com.sksamuel.scrimage.{Image, Pixel}
 
-import scala.collection.parallel.ParIterable
 import math._
+import scala.annotation.tailrec
 
 /**
   * 2nd milestone: basic visualization
   */
 object Visualization extends VisualizationInterface {
   val doublePrecision = 1e-6
-  val globalP = 2
-  val earthRadius = 6.378
+  val globalP = 6
+  val earthRadius = 6.37
+  val globalMinDistance = 1
 
   /**
     * @param loc1 Location 1
@@ -29,11 +30,14 @@ object Visualization extends VisualizationInterface {
         abs(loc1.lon - loc2.lon) < 180 + doublePrecision) Pi
 
       // Otherwise
-      else acos(
-        sin(loc1.lat.toRadians) * sin(loc2.lat.toRadians) +
-          cos(loc1.lat.toRadians) * cos(loc2.lat.toRadians) *
-            cos(loc1.lon.toRadians - loc2.lon.toRadians)
-      )
+      else {
+        val lat1Rad = loc1.lat.toRadians
+        val lat2Rad = loc2.lat.toRadians
+        val lon1Rad = loc1.lon.toRadians
+        val lon2Rad = loc2.lon.toRadians
+
+        acos(sin(lat1Rad) * sin(lat2Rad) + cos(lat1Rad) * cos(lat2Rad) * cos(lon2Rad - lon1Rad))
+      }
     }
 
     earthRadius * deltaSigma
@@ -44,26 +48,28 @@ object Visualization extends VisualizationInterface {
     * @param location     Location where to predict the temperature
     * @return The predicted temperature at `location`
     */
-  def predictTemperature(temperatures: Iterable[(Location, Temperature)], location: Location): Temperature =
-    parPredictTemperature(globalP)(temperatures.par, location: Location)
-
-  def parPredictTemperature(p: Int)(temperatures: ParIterable[(Location, Temperature)], location: Location): Temperature = {
+  def predictTemperature(temperatures: Iterable[(Location, Temperature)], location: Location): Temperature = {
     val distances = temperatures.map {
       case (station, temperature) => (locationsDistance(station, location), temperature)
     }
 
     val (minDistance, tempAtMinDistance) = distances.minBy(_._1)
-    if (minDistance < 1) tempAtMinDistance
+    if (minDistance < globalMinDistance) tempAtMinDistance
     else {
-      def inverseDistance(distance: Double): Double =
-        1.0 / pow(distance, p)
-
       val factors = distances
-        .map(t => (inverseDistance(t._1), inverseDistance(t._1) * t._2))
+        .map(a => (1.0 / intPow(a._1, globalP), a._2 / intPow(a._1, globalP)))
         .reduce((a, b) => (a._1 + b._1, a._2 + b._2))
 
       factors._2 / factors._1
     }
+  }
+
+  @tailrec
+  def intPow(base: Double, power: Int, result: Double = 1): Double = {
+    if (power == 0) result
+    else if (power == 1) base * result
+    else if (power % 2 != 0) intPow(base * base, (power - 1) / 2, result * base)
+    else intPow(base * base, power / 2, result)
   }
 
   /**
@@ -99,12 +105,16 @@ object Visualization extends VisualizationInterface {
     * @param colors       Color scale
     * @return A 360×180 image where each pixel shows the predicted temperature at its location
     */
-  def visualize(temperatures: Iterable[(Location, Temperature)], colors: Iterable[(Temperature, Color)]): Image =
-      parVisualize(6)(temperatures.par, colors)
+  def visualize(temperatures: Iterable[(Location, Temperature)], colors: Iterable[(Temperature, Color)]): Image = {
+    System.gc()
+    val result = parVisualize(temperatures, colors)
+    System.gc()
+    result
+  }
 
-  def parVisualize(p: Int)(temperatures: ParIterable[(Location, Temperature)], colors: Iterable[(Temperature, Color)]): Image = {
+  def parVisualize(temperatures: Iterable[(Location, Temperature)], colors: Iterable[(Temperature, Color)]): Image = {
     def latAndLonToPixel(lat: Int, lon: Int): Pixel = {
-      val color = interpolateColor(colors, parPredictTemperature(p)(temperatures, Location(lat, lon)))
+      val color = interpolateColor(colors, predictTemperature(temperatures, Location(lat, lon)))
       Pixel(color.red, color.green, color.blue, 255)
     }
 

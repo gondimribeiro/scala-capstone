@@ -14,8 +14,11 @@ object Extraction extends ExtractionInterface {
     * @param temperaturesFile Path of the temperatures resource file to use (e.g. "/1975.csv")
     * @return A sequence containing triplets (date, location, temperature)
     */
-  def locateTemperatures(year: Year, stationsFile: String, temperaturesFile: String): Iterable[(LocalDate, Location, Temperature)] =
-    parLocateTemperatures(year, stationsFile, temperaturesFile).seq
+  def locateTemperatures(year: Year, stationsFile: String, temperaturesFile: String): Iterable[(LocalDate, Location, Temperature)] = {
+    val result = parLocateTemperatures(year, stationsFile, temperaturesFile).seq
+    System.gc()
+    result
+  }
 
   def parLocateTemperatures(year: Year, stationsFile: String, temperaturesFile: String): ParIterable[(LocalDate, Location, Temperature)] = {
     val stations = readResource(stationsFile).par
@@ -43,21 +46,23 @@ object Extraction extends ExtractionInterface {
     * @param records A sequence containing triplets (date, location, temperature)
     * @return A sequence containing, for each location, the average temperature over the year.
     */
-  def locationYearlyAverageRecords(records: Iterable[(LocalDate, Location, Temperature)]): Iterable[(Location, Temperature)] =
-    parLocationYearlyAverageRecords(records.par).seq
+  def locationYearlyAverageRecords(records: Iterable[(LocalDate, Location, Temperature)]): Iterable[(Location, Temperature)] = {
+    val result = parLocationYearlyAverageRecords(records.par).seq
+    System.gc()
+    result
+  }
 
   def parLocationYearlyAverageRecords(records: ParIterable[(LocalDate, Location, Temperature)]): ParIterable[(Location, Temperature)] = {
-    def computeTemperateAverages(temperatures: ParIterable[(LocalDate, Location, Temperature)]): Temperature = {
-      val reduced = temperatures
-        .map(t => (t._3, 1))
-        .reduce((a, b) => (a._1 + b._1, a._2 + b._2))
-
-      reduced._1 / reduced._2
+    def computeTemperatureAverages(temperatures: ParIterable[(LocalDate, Location, Temperature)]): Temperature = {
+      val numTemperatures = temperatures.size
+      temperatures
+        .map(t => t._3)
+        .sum / numTemperatures
     }
 
     records
       .groupBy(t => t._2)
-      .map(t => (t._1, computeTemperateAverages(t._2)))
+      .map(t => (t._1, computeTemperatureAverages(t._2)))
       .toSeq
   }
 

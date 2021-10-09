@@ -4,7 +4,6 @@ import com.sksamuel.scrimage.writer
 import observatory.Extraction._
 import observatory.Interaction._
 import observatory.Visualization.parVisualize
-import scala.collection.parallel.ParIterable
 
 object Main extends App {
   def printToc(t: Long): Unit = {
@@ -24,7 +23,7 @@ object Main extends App {
   println("Locating temperatures and computing averages...")
   var tic = System.nanoTime
   val locations = parLocateTemperatures(year, stationsPath, temperaturePath)
-  val temperatures = parLocationYearlyAverageRecords(locations)
+  val temperatures = parLocationYearlyAverageRecords(locations).seq
   val colors = readResource(temperatureColorsPath)
     .map(TemperatureColors)
     .map(c => (c.temperature, Color(c.red, c.green, c.blue)))
@@ -35,15 +34,15 @@ object Main extends App {
       println("Visualizing...")
       tic = System.nanoTime
       val file = new java.io.File(s"target/temp2-$year.png")
-      parVisualize(6)(temperatures, colors).output(file)
+      parVisualize(temperatures, colors).output(file)
       printToc(tic)
     case "tiles" =>
       println("Generating tiles...")
 
-      def generateImage(year: Year, tile: Tile, temperatures: ParIterable[(Location, Temperature)]): Unit = {
+      def generateImage(year: Year, tile: Tile, temperatures: Iterable[(Location, Temperature)]): Unit = {
         val tic = System.nanoTime
         println(s"year=$year, tile=$tile")
-        val image = parTile(4)(temperatures, colors, tile)
+        val image = parTile(temperatures, colors, tile)
         val file = new java.io.File(s"target/temperatures/$year/${tile.zoom}/${tile.x}-${tile.y}.png")
         if (!file.getParentFile.exists) file.getParentFile.mkdirs
         image.output(file)
