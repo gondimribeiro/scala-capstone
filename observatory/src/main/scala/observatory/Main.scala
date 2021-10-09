@@ -100,7 +100,7 @@ object Main extends App {
   }
 
   val year = 2015
-  val normalYears = 1975 to 1978
+  val normalYears = 1975 to 1990
   val stationsPath = "/stations.csv"
   val temperatureColorsPath = "/colors_temperatures.csv"
   val deviationColorsPath = "/colors_deviations.csv"

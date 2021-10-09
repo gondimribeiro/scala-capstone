@@ -69,7 +69,7 @@ object Interaction2 extends Interaction2Interface {
     * @return The URL pattern to retrieve tiles
     */
   def layerUrlPattern(selectedLayer: Signal[Layer], selectedYear: Signal[Year]): Signal[String] = {
-    Signal(s"generated/${selectedLayer().layerName.id}/${selectedYear()}/{z}/{x}/{y}.png")
+    Signal(s"target/${selectedLayer().layerName.id}/${selectedYear()}/{z}/{x}-{y}.png")
   }
 
   /**
@@ -80,7 +80,6 @@ object Interaction2 extends Interaction2Interface {
   def caption(selectedLayer: Signal[Layer], selectedYear: Signal[Year]): Signal[String] = {
     Signal(s"${selectedLayer().layerName.id.capitalize} (${selectedYear()})")
   }
-
 }
 
 // Interface used by the grading infrastructure. Do not change signatures
