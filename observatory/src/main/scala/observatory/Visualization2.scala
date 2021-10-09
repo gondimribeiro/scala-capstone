@@ -1,17 +1,13 @@
 package observatory
 
 import com.sksamuel.scrimage.{Image, Pixel}
-import observatory.Visualization.{interpolateColor, predictTemperature}
-import observatory.Interaction.tileLocation
+import observatory.Visualization.interpolateColor
+import observatory.Interaction.{tileLocation, zoomLevel, tileSide, alpha}
 
 /**
   * 5th milestone: value-added information visualization
   */
 object Visualization2 extends Visualization2Interface {
-  val zoomLevel: Int = 8
-  val tileSide: Int = 1 << zoomLevel
-  val alpha: Int = 100
-
   /**
     * @param point (x, y) coordinates of a point in the grid cell
     * @param d00   Top-left value
@@ -54,6 +50,7 @@ object Visualization2 extends Visualization2Interface {
       val d10 = grid(GridLocation(originLat, originLon + 1))
       val d11 = grid(GridLocation(originLat - 1, originLon + 1))
       val color = interpolateColor(colors, bilinearInterpolation(point, d00, d01, d10, d11))
+
       Pixel(color.red, color.green, color.blue, alpha)
     }
 

@@ -50,12 +50,13 @@ object Manipulation extends ManipulationInterface {
       locationTemperature.get(location) match {
         case Some(temperature) => temperature
         case None =>
-          val temperature = temperaturess
-            .map(predictTemperature(_, Location(location.lat, location.lon)))
+          val doubleLocation = Location(location.lat, location.lon)
+          val avgTemperature = temperaturess
+            .map(predictTemperature(_, doubleLocation))
             .sum / numberYears
 
-          locationTemperature.put(location, temperature)
-          temperature
+          locationTemperature.put(location, avgTemperature)
+          avgTemperature
       }
   }
 
@@ -73,6 +74,5 @@ object Manipulation extends ManipulationInterface {
   def deviationNoGC(temperatures: Iterable[(Location, Temperature)], normals: GridLocation => Temperature): GridLocation => Temperature = {
     location: GridLocation => makeGridNoGC(temperatures)(location) - normals(location)
   }
-
 }
 
