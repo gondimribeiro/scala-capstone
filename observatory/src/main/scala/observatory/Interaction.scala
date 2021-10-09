@@ -12,7 +12,6 @@ object Interaction extends InteractionInterface {
   val zoomLevel: Int = 8
   val tileSide: Int = 1 << zoomLevel
   val alpha: Int = 100
-  val globalP: Int = 6
 
   /**
     * @param tile Tile coordinates
@@ -70,19 +69,14 @@ object Interaction extends InteractionInterface {
     * @param generateImage Function that generates an image given a year, a zoom level, the x and
     *                      y coordinates of the tile and the data to build the image from
     */
-  def generateTiles[Data](
-                           yearlyData: Iterable[(Year, Data)],
-                           generateImage: (Year, Tile, Data) => Unit
-                         ): Unit = {
+  def generateTiles[Data](yearlyData: Iterable[(Year, Data)], generateImage: (Year, Tile, Data) => Unit): Unit = {
     System.gc()
     generateTiles(0 to 3)(yearlyData, generateImage)
     System.gc()
   }
 
-  def generateTiles[Data](zoomLevels: Iterable[Int])(
-    yearlyData: Iterable[(Year, Data)],
-    generateImage: (Year, Tile, Data) => Unit
-  ): Unit = {
+  def generateTiles[Data](zoomLevels: Iterable[Int])
+                         (yearlyData: Iterable[(Year, Data)], generateImage: (Year, Tile, Data) => Unit): Unit = {
     zoomLevels.foreach { zoom =>
       val mapSide = 1 << zoom
       for {
