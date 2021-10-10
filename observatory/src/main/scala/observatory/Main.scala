@@ -107,18 +107,21 @@ object Main extends App {
     printToc(tic)
   }
 
-  val years = 2015 to 1990 by -1
+  val years = 2015 to 1975 by -1
   val normalYears = 1975 to 1990
   val stationsPath = "/stations.csv"
   val temperatureColorsPath = "/colors_temperatures.csv"
   val deviationColorsPath = "/colors_deviations.csv"
-  val mode = "deviations"
+  val mode = "complete-interaction"
 
   println(s"Running mode = $mode...")
   mode match {
     case "visualize" => visualize(years.head)
     case "tiles" => tiles()
     case "deviations" => deviations()
+    case "complete-interaction" =>
+      tiles()
+      deviations()
     case _ => println("Wrong mode")
   }
 }
