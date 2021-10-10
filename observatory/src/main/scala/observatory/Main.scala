@@ -3,7 +3,7 @@ package observatory
 import com.sksamuel.scrimage.writer
 import observatory.Extraction.{parLocateTemperatures, parLocationYearlyAverageRecords, readResource}
 import observatory.Interaction.generateTiles
-import observatory.Manipulation.{averageNoGC, deviationNoGC, makeGridNoGC}
+import observatory.Manipulation.{getAverageGrid, getDeviationGrid, getGrid}
 import observatory.Visualization.parVisualize
 import observatory.Visualization2.visualizeGridNoGC
 
@@ -63,7 +63,7 @@ object Main extends App {
     years.foreach {
       year =>
         val temperatures = temperatureAverages(year)
-        val grid = makeGridNoGC(temperatures)
+        val grid = getGrid(temperatures)
         val yearlyData = Seq((year, grid))
         generateTiles(0 to 3)(yearlyData, generateTemperaturesImage)
     }
@@ -92,34 +92,27 @@ object Main extends App {
 
     println("Generating deviation tiles...")
     val tic = System.nanoTime
-    val normalsGrid = averageNoGC(normalTemperatures.values)
+    val normalsGrid = getAverageGrid(normalTemperatures.values)
+
     years.foreach {
       year =>
         val temperatures = normalTemperatures.get(year) match {
           case Some(temperatures) => temperatures
           case None => temperatureAverages(year)
         }
-        val yearlyData = Seq((year, deviationNoGC(temperatures, normalsGrid)))
+        val yearlyData = Seq((year, getDeviationGrid(temperatures, normalsGrid)))
         generateTiles(0 to 3)(yearlyData, generateDeviationsImage)
     }
 
-    val yearlyData = years
-      .map {
-        year =>
-          val temperatures = temperatureAverages(year)
-          val deviationGrid = deviationNoGC(temperatures, normalsGrid)
-          (year, deviationGrid)
-      }
-    generateTiles(0 to 3)(yearlyData, generateDeviationsImage)
     printToc(tic)
   }
 
-  val years = 2015 to 1975 by -1
+  val years = 2015 to 1990 by -1
   val normalYears = 1975 to 1990
   val stationsPath = "/stations.csv"
   val temperatureColorsPath = "/colors_temperatures.csv"
   val deviationColorsPath = "/colors_deviations.csv"
-  val mode = "tiles"
+  val mode = "deviations"
 
   println(s"Running mode = $mode...")
   mode match {

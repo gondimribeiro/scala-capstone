@@ -16,20 +16,14 @@ object Manipulation extends ManipulationInterface {
     */
   def makeGrid(temperatures: Iterable[(Location, Temperature)]): GridLocation => Temperature = {
     System.gc()
-    makeGridNoGC(temperatures)
+    getGrid(temperatures)
   }
 
-  def makeGridNoGC(temperatures: Iterable[(Location, Temperature)]): GridLocation => Temperature = {
-    val locationTemperature: mutable.Map[GridLocation, Temperature] = new TrieMap[GridLocation, Temperature]()
-
-    location: GridLocation =>
-      locationTemperature.get(location) match {
-        case Some(temperature) => temperature
-        case None =>
-          val temperature = predictTemperature(temperatures, Location(location.lat, location.lon))
-          locationTemperature.put(location, temperature)
-          temperature
-      }
+  def getGrid(temperatures: Iterable[(Location, Temperature)]): GridLocation => Temperature = {
+    memorizeGrid {
+      location: GridLocation =>
+        predictTemperature(temperatures, Location(location.lat, location.lon))
+    }
   }
 
   /**
@@ -39,27 +33,20 @@ object Manipulation extends ManipulationInterface {
     */
   def average(temperaturess: Iterable[Iterable[(Location, Temperature)]]): GridLocation => Temperature = {
     System.gc()
-    averageNoGC(temperaturess)
+    getAverageGrid(temperaturess)
   }
 
-  def averageNoGC(temperaturess: Iterable[Iterable[(Location, Temperature)]]): GridLocation => Temperature = {
+  def getAverageGrid(temperaturess: Iterable[Iterable[(Location, Temperature)]]): GridLocation => Temperature = {
     val numberYears: Int = temperaturess.size
-    val locationTemperature: mutable.Map[GridLocation, Temperature] = new TrieMap[GridLocation, Temperature]()
 
-    location: GridLocation =>
-      locationTemperature.get(location) match {
-        case Some(temperature) => temperature
-        case None =>
-          val doubleLocation = Location(location.lat, location.lon)
-          val avgTemperature = temperaturess
-            .map(predictTemperature(_, doubleLocation))
-            .sum / numberYears
-
-          locationTemperature.put(location, avgTemperature)
-          avgTemperature
-      }
+    memorizeGrid {
+      location: GridLocation =>
+        val doubleLocation = Location(location.lat, location.lon)
+        temperaturess
+          .map(predictTemperature(_, doubleLocation))
+          .sum / numberYears
+    }
   }
-
 
   /**
     * @param temperatures Known temperatures
@@ -68,17 +55,30 @@ object Manipulation extends ManipulationInterface {
     */
   def deviation(temperatures: Iterable[(Location, Temperature)], normals: GridLocation => Temperature): GridLocation => Temperature = {
     System.gc()
-    deviationNoGC(temperatures, normals)
+    getDeviationGrid(temperatures, normals)
   }
 
-  def deviationNoGC(temperatures: Iterable[(Location, Temperature)], normals: GridLocation => Temperature): GridLocation => Temperature = {
-    val locationDeviation: mutable.Map[GridLocation, Temperature] = new TrieMap[GridLocation, Temperature]()
+  def getDeviationGrid(temperatures: Iterable[(Location, Temperature)], normals: GridLocation => Temperature): GridLocation => Temperature = {
+    memorizeGrid {
+      location: GridLocation =>
+        getGrid(temperatures)(location) - normals(location)
+    }
+  }
+
+  /**
+    * @param grid grid function
+    * @return The same grid function byt memorized using a TrieMap
+    */
+  def memorizeGrid(grid: GridLocation => Temperature): GridLocation => Temperature = {
+    val locationTemperature: mutable.Map[GridLocation, Temperature] = new TrieMap[GridLocation, Temperature]()
 
     location: GridLocation =>
-      locationDeviation.get(location) match {
+      locationTemperature.get(location) match {
         case Some(temperature) => temperature
-        case None => makeGridNoGC(temperatures)(location) - normals(location)
+        case None =>
+          val temperature: Temperature = grid(location)
+          locationTemperature.put(location, temperature)
+          temperature
       }
   }
 }
-
