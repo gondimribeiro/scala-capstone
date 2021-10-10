@@ -72,7 +72,13 @@ object Manipulation extends ManipulationInterface {
   }
 
   def deviationNoGC(temperatures: Iterable[(Location, Temperature)], normals: GridLocation => Temperature): GridLocation => Temperature = {
-    location: GridLocation => makeGridNoGC(temperatures)(location) - normals(location)
+    val locationDeviation: mutable.Map[GridLocation, Temperature] = new TrieMap[GridLocation, Temperature]()
+
+    location: GridLocation =>
+      locationDeviation.get(location) match {
+        case Some(temperature) => temperature
+        case None => makeGridNoGC(temperatures)(location) - normals(location)
+      }
   }
 }
 

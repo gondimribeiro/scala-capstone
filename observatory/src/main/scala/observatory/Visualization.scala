@@ -12,7 +12,7 @@ object Visualization extends VisualizationInterface {
   val doublePrecision = 1e-6
   val globalP = 6
   val earthRadius = 6.37
-  val globalMinDistance = 1
+  val globalMinDistance = 0.2
 
   /**
     * @param loc1 Location 1
@@ -57,7 +57,11 @@ object Visualization extends VisualizationInterface {
     if (minDistance < globalMinDistance) tempAtMinDistance
     else {
       val factors = distances
-        .map(a => (1.0 / intPow(a._1, globalP), a._2 / intPow(a._1, globalP)))
+        .map {
+          case (distance, temperature) =>
+            val poweredDistance = intPow(distance, globalP)
+            (1.0 / poweredDistance, temperature / poweredDistance)
+        }
         .reduce((a, b) => (a._1 + b._1, a._2 + b._2))
 
       factors._2 / factors._1

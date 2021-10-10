@@ -2,13 +2,12 @@ package observatory
 
 import com.sksamuel.scrimage.writer
 import observatory.Extraction.{parLocateTemperatures, parLocationYearlyAverageRecords, readResource}
-import observatory.Interaction.{generateTiles, parTile}
-import observatory.Manipulation.{averageNoGC, deviationNoGC}
+import observatory.Interaction.generateTiles
+import observatory.Manipulation.{averageNoGC, deviationNoGC, makeGridNoGC}
 import observatory.Visualization.parVisualize
 import observatory.Visualization2.visualizeGridNoGC
 
 object Main extends App {
-
 
   def readColors(colorsPath: String): Iterable[(Temperature, Color)] = {
     readResource(colorsPath)
@@ -33,7 +32,7 @@ object Main extends App {
     temperatures
   }
 
-  def visualize(): Unit = {
+  def visualize(year: Year): Unit = {
     val temperatures = temperatureAverages(year)
     val colors = readColors(temperatureColorsPath)
 
@@ -48,21 +47,27 @@ object Main extends App {
   def tiles(): Unit = {
     val colors = readColors(temperatureColorsPath)
 
-    def generateTemperaturesImage(year: Year, tile: Tile, temperatures: Iterable[(Location, Temperature)]): Unit = {
-      val tic = System.nanoTime
+    def generateTemperaturesImage(year: Year, tile: Tile, grid: GridLocation => Temperature): Unit = {
       println(s"\tyear=$year, tile=$tile")
-      val image = parTile(temperatures, colors, tile)
+      val tic = System.nanoTime
+      val image = visualizeGridNoGC(grid, colors, tile)
       val file = new java.io.File(s"target/temperatures/$year/${tile.zoom}/${tile.x}-${tile.y}.png")
       if (!file.getParentFile.exists) file.getParentFile.mkdirs
       image.output(file)
       printToc(tic)
     }
 
-    val temperatures = temperatureAverages(year)
     println("Generating tiles...")
     val tic = System.nanoTime
-    val yearlyData = Seq((year, temperatures))
-    generateTiles(0 to 0)(yearlyData, generateTemperaturesImage)
+
+    years.foreach {
+      year =>
+        val temperatures = temperatureAverages(year)
+        val grid = makeGridNoGC(temperatures)
+        val yearlyData = Seq((year, grid))
+        generateTiles(0 to 3)(yearlyData, generateTemperaturesImage)
+    }
+
     printToc(tic)
   }
 
@@ -80,35 +85,45 @@ object Main extends App {
       printToc(tic)
     }
 
-    // Read inputs
-    val normalTemperatures = for {
-      y <- normalYears
-    } yield temperatureAverages(y)
-    val temperatures = temperatureAverages(year)
+    val normalTemperatures: Map[Year, Iterable[(Location, Temperature)]] = (
+      for {
+        year <- normalYears
+      } yield (year, temperatureAverages(year))).toMap
 
     println("Generating deviation tiles...")
     val tic = System.nanoTime
+    val normalsGrid = averageNoGC(normalTemperatures.values)
+    years.foreach {
+      year =>
+        val temperatures = normalTemperatures.get(year) match {
+          case Some(temperatures) => temperatures
+          case None => temperatureAverages(year)
+        }
+        val yearlyData = Seq((year, deviationNoGC(temperatures, normalsGrid)))
+        generateTiles(0 to 3)(yearlyData, generateDeviationsImage)
+    }
 
-    // Compute grids
-    val normalsGrid = averageNoGC(normalTemperatures)
-    val deviationGrid = deviationNoGC(temperatures, normalsGrid)
-
-    // Generate tiles
-    val yearlyData = Seq((year, deviationGrid))
-    generateTiles(0 to 1)(yearlyData, generateDeviationsImage)
+    val yearlyData = years
+      .map {
+        year =>
+          val temperatures = temperatureAverages(year)
+          val deviationGrid = deviationNoGC(temperatures, normalsGrid)
+          (year, deviationGrid)
+      }
+    generateTiles(0 to 3)(yearlyData, generateDeviationsImage)
     printToc(tic)
   }
 
-  val year = 2015
+  val years = 2015 to 1975 by -1
   val normalYears = 1975 to 1990
   val stationsPath = "/stations.csv"
   val temperatureColorsPath = "/colors_temperatures.csv"
   val deviationColorsPath = "/colors_deviations.csv"
-  val mode = "deviations"
+  val mode = "tiles"
 
   println(s"Running mode = $mode...")
   mode match {
-    case "visualize" => visualize()
+    case "visualize" => visualize(years.head)
     case "tiles" => tiles()
     case "deviations" => deviations()
     case _ => println("Wrong mode")
